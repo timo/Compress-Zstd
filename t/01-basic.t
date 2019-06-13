@@ -22,8 +22,6 @@ diag "return value of feed-input for compressor: "~ $compressor.feed-input($feed
 ok $feedBuf.pos != 0, "feed buffer's position has moved: $feedBuf.pos() $feedBuf.size()";
 ok $resBuf.pos != 0, "result buffer's position has moved: $resBuf.pos() $resBuf.size()";
 
-diag $resBuf.buffer[^$resBuf.pos];
-
 my $decompressor = Zstd::DStream.new();
 
 my Zstd::InBuffer $decFeedBuf .= new($resBuf.size);

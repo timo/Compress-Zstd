@@ -129,8 +129,6 @@ class Zstd::Compressor {
 
     method !transport-output {
         if $!resBuf.pos > 0 {
-            note " !!! resBuf position is not zero: $!resBuf.pos()";
-            note "putting data into compressor output storage";
             $!compressorOutput.append($!resBuf.buffer[0 ..^ $!resBuf.pos].Array);
             $!resBuf.pos = 0;
             $!resBuf.size = $!resBufSize;
@@ -143,20 +141,14 @@ class Zstd::Compressor {
     }
 
     method compress(buf8 $input) {
-        note "want to compress $input.elems() bytes of data";
         if $input.elems {
             my $chunk = $input;
             my $output = buf8.new;
             while $chunk.elems() && $chunk.elems > $!feedBufSize {
-               note "going for a partial chunk";
                my $partial = $chunk.splice(0, $!feedBufSize);
-               say "chunk is now $chunk.elems() big, partial is $partial.elems()";
                if $partial.elems() {
                    my $res = self.compress($partial);
-                   note "compressed! { $res.elems } bytes";
-                   note "";
                }
-               sleep 0.02;
             }
 
             # Input buffer:
@@ -178,14 +170,12 @@ class Zstd::Compressor {
 
             my CArray[uint8] $target := $!feedBuf.buffer;
 
-            note "assigning $targetElems into the feed buffer";
             $target[$targetPos - 1] = $chunk[$targetPos - 1] while $targetPos++ < $targetElems;
 
             $!feedBuf.size = $targetElems;
             $!feedBuf.pos = 0;
 
-            note "feeding input to compressor";
-            note "next call ought to give { $!cstream.feed-input($!feedBuf, $!resBuf) } bytes";
+            $!cstream.feed-input($!feedBuf, $!resBuf);
 
             if $!feedBuf.pos == $!feedBuf.size {
                 $!feedBuf.pos = 0;
@@ -205,8 +195,7 @@ class Zstd::Compressor {
     }
 
     method flush {
-        note "flushing stream";
-        note $!cstream.flush-stream($!resBuf);
+        $!cstream.flush-stream($!resBuf);
 
         self!transport-output;
 
@@ -214,8 +203,7 @@ class Zstd::Compressor {
     }
 
     method end-stream {
-        note "ending stream";
-        note $!cstream.end-stream($!resBuf);
+        $!cstream.end-stream($!resBuf);
 
         self!transport-output;
 
@@ -248,18 +236,13 @@ class Zstd::Decompressor {
     }
 
     method decompress(buf8 $input) {
-        note "want to decompress $input.elems() bytes of data";
         if $input.elems > 0 {
             my $chunk = $input;
             my $output = buf8.new;
             while $chunk.elems() && $chunk.elems > $!feedBufSize {
-               note "going for a partial chunk";
                my $partial = $chunk.splice(0, $!feedBufSize);
-               say "chunk is now $chunk.elems() big";
                if $partial.elems() {
                    my $res = self.decompress($partial);
-                   note "decompressed! { $res.elems } bytes";
-                   note "";
                }
                sleep 0.02;
             }
@@ -269,23 +252,18 @@ class Zstd::Decompressor {
 
             my CArray[uint8] $target := $!feedBuf.buffer;
 
-            note "assigning $targetElems into the feed buffer";
             $target[$targetPos - 1] = $chunk[$targetPos - 1] while $targetPos++ < $targetElems;
 
             $!feedBuf.size = $targetElems;
             $!feedBuf.pos = 0;
 
-            note "feeding input to decompressor";
             my $nextfeed = $!dstream.feed-input($!feedBuf, $!resBuf);
-
-            note "next feed should give $nextfeed bytes";
 
             if $!feedBuf.pos == $!feedBuf.size {
                 $!feedBuf.pos = 0;
                 $!feedBuf.size = 0;
             }
             else {
-                note "left-overs?";
                 if $nextfeed == 0 {
                     $!leftOvers.append($!feedBuf.buffer[$!feedBuf.pos ..^ $input.elems].Array);
                 }
@@ -306,9 +284,6 @@ class Zstd::Decompressor {
 
     method !transport-output {
         if $!resBuf.pos > 0 {
-            note " !!! resBuf position is not zero: $!resBuf.pos()";
-            note "putting data into compressor output storage";
-            say $!resBuf.buffer[0..($!resBuf.pos)].Array.perl;
             $!decompressorOutput.append($!resBuf.buffer[0..($!resBuf.pos)].Array);
             $!resBuf.pos = 0;
             $!resBuf.size = $!resBufSize;
