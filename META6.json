@@ -5,7 +5,7 @@
   ],
   "build-depends" : [ ],
   "depends" : [ ],
-  "description" : "blah blah blah",
+  "description" : "Native binding to Facebook's Zstd compression library",
   "license" : "Artistic-2.0",
   "name" : "Compress::Zstd",
   "perl" : "6.c",

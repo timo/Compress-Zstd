@@ -28,3 +28,5 @@ diag $decresult.decode("utf8");
 is-deeply $decresult, $input-buf, "decompressed is eqv to input";
 
 is-deeply $decomp.get-leftovers.list, $leftover-buf.list, "leftovers after zstd stream is kept around";
+
+done-testing;
