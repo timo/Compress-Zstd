@@ -5,7 +5,7 @@
   ],
   "build-depends" : [ ],
   "depends" : [ ],
-  "description" : "Compress or Decompress using facebook's zstandard \"libzstd\" library",
+  "description" : "blah blah blah",
   "license" : "Artistic-2.0",
   "name" : "Compress::Zstd",
   "perl" : "6.c",
@@ -13,8 +13,14 @@
     "Compress::Zstd" : "lib/Compress/Zstd.pm6"
   },
   "resources" : [ ],
-  "source-url" : "",
-  "tags" : [ "Compression", "Decompress", "Compress", "ZSTD", "Native" ],
+  "source-url" : "https://github.com/timo/Compress-Zstd.git",
+  "tags" : [
+    "Compression",
+    "Decompress",
+    "Compress",
+    "ZSTD",
+    "Native"
+  ],
   "test-depends" : [ ],
   "version" : "0.0.1"
 }

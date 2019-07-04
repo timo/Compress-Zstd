@@ -140,7 +140,7 @@ class Zstd::Compressor {
 
     }
 
-    method compress(buf8 $input) {
+    method compress(blob8 $input) {
         if $input.elems {
             my $chunk = $input;
             my $output = buf8.new;
@@ -170,12 +170,12 @@ class Zstd::Compressor {
 
             my CArray[uint8] $target := $!feedBuf.buffer;
 
-            $target[$targetPos - 1] = $chunk[$targetPos - 1] while $targetPos++ < $targetElems;
+            $target[$targetPos - 1] = $chunk[$targetPos - 1] while $targetPos++ <= $targetElems;
 
             $!feedBuf.size = $targetElems;
             $!feedBuf.pos = 0;
 
-            $!cstream.feed-input($!feedBuf, $!resBuf);
+            note "feed input of cstream: ", $!cstream.feed-input($!feedBuf, $!resBuf);
 
             if $!feedBuf.pos == $!feedBuf.size {
                 $!feedBuf.pos = 0;
@@ -203,9 +203,12 @@ class Zstd::Compressor {
     }
 
     method end-stream {
-        $!cstream.end-stream($!resBuf);
+        my $to-flush;
+        repeat {
+            $to-flush = $!cstream.end-stream($!resBuf);
 
-        self!transport-output;
+            self!transport-output;
+        } until ($to-flush == 0);
 
         $!compressorOutput;
     }
@@ -223,6 +226,8 @@ class Zstd::Decompressor {
 
     has buf8 $!leftOvers;
 
+    has int64 $!status;
+
     method BUILD {
         $!dstream = Zstd::DStream.new;
         $!feedBuf = Zstd::InBuffer.new;
@@ -233,7 +238,11 @@ class Zstd::Decompressor {
 
         $!decompressorOutput .= new;
         $!leftOvers .= new;
+
+        $!status = Zstd::InBuffer.recommended-size;
     }
+
+    sub memmove(CArray $target, Pointer $source, int32 $count) is native(Str) {*}
 
     method decompress(buf8 $input) {
         if $input.elems > 0 {
@@ -244,7 +253,6 @@ class Zstd::Decompressor {
                if $partial.elems() {
                    my $res = self.decompress($partial);
                }
-               sleep 0.02;
             }
 
             my int $targetPos = 0;
@@ -252,23 +260,43 @@ class Zstd::Decompressor {
 
             my CArray[uint8] $target := $!feedBuf.buffer;
 
-            $target[$targetPos - 1] = $chunk[$targetPos - 1] while $targetPos++ < $targetElems;
+            $target.ASSIGN-POS($targetPos - 1, $chunk.AT-POS($targetPos - 1)) while ++$targetPos <= $targetElems;
 
             $!feedBuf.size = $targetElems;
             $!feedBuf.pos = 0;
 
-            my $nextfeed = $!dstream.feed-input($!feedBuf, $!resBuf);
+            $!status = $!dstream.feed-input($!feedBuf, $!resBuf);
 
             if $!feedBuf.pos == $!feedBuf.size {
                 $!feedBuf.pos = 0;
                 $!feedBuf.size = 0;
             }
             else {
-                if $nextfeed == 0 {
+                if $!status == 0 {
                     $!leftOvers.append($!feedBuf.buffer[$!feedBuf.pos ..^ $input.elems].Array);
                 }
                 else {
-                    die "feeding more input when output buffer was full NYI";
+                    my $feedbuf-moved = 0;
+                    loop {
+                        my $fbb := $!feedBuf.buffer;
+                        memmove($fbb, nativecast(Pointer[uint8], $fbb).add($!feedBuf.pos), $!feedBuf.size - $!feedBuf.pos);
+                        $!feedBuf.size -= $!feedBuf.pos;
+                        $feedbuf-moved += $!feedBuf.pos;
+                        $!feedBuf.pos = 0;
+
+                        self!transport-output;
+
+                        $!status = $!dstream.feed-input($!feedBuf, $!resBuf);
+
+                        if $!feedBuf.pos == $!feedBuf.size {
+                            last
+                        }
+                        elsif $!status == 0 {
+                            $!leftOvers.append($!feedBuf.buffer[$!feedBuf.pos ..^ ($input.elems - $feedbuf-moved)].Array);
+                            last;
+                        }
+
+                    }
                 }
             }
 
@@ -284,7 +312,7 @@ class Zstd::Decompressor {
 
     method !transport-output {
         if $!resBuf.pos > 0 {
-            $!decompressorOutput.append($!resBuf.buffer[0..($!resBuf.pos)].Array);
+            $!decompressorOutput.append($!resBuf.buffer[0..^($!resBuf.pos)].Array);
             $!resBuf.pos = 0;
             $!resBuf.size = $!resBufSize;
 
@@ -293,13 +321,20 @@ class Zstd::Decompressor {
             #     ^ prevPos
         }
     }
+
+    method finished-a-frame {
+        $!status == 0
+    }
+    method suggested-next-size {
+        $!status || 40960
+    }
 }
 
 =begin pod
 
 =head1 NAME
 
-Compress::Zstd - blah blah blah
+Compress::Zstd - Native binding to Facebook's Zstd compression library
 
 =head1 SYNOPSIS
 
@@ -307,11 +342,27 @@ Compress::Zstd - blah blah blah
 
 use Compress::Zstd;
 
+my $compressor = Zstd::Compressor.new;
+
+$comp.compress("hello how are you today?".encode("utf8"));
+my $result = $comp.end-stream;
+"/tmp/compressed.zstd".IO.spurt($result);
+
+$result.append("here is some bonus junk at the end".encode("utf8"));
+
+my $decompressor = Zstd::Decompressor.new;
+
+my $decomp-result = $decompressor.decompress($result);
+
+my $the-junk-at-the-end-again = $decompressor.get-leftovers;
+
 =end code
 
 =head1 DESCRIPTION
 
-Compress::Zstd is ...
+Compress::Zstd lets you read and write data compressed with facebook's zstd library.
+
+The API is not yet stable and may receive some improvements and/or clarifications in future versions.
 
 =head1 AUTHOR
 

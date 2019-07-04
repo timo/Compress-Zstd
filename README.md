@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/timo/Compress-Zstd.svg?branch=master)](https://travis-ci.org/timo/Compress-Zstd)
+
 NAME
 ====
 
