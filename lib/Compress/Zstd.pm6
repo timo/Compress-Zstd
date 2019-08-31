@@ -13,16 +13,20 @@ sub handleError(size_t $retcode --> size_t) {
 my sub ZSTD_isError(size_t) returns uint32 is native('zstd') { }
 my sub ZSTD_getErrorName(size_t) returns Str is native('zstd') { }
 
+my sub malloc(size_t $amount) is native(Str) returns CArray[uint8] { }
+my sub free(CArray[uint8]) is native(Str) { }
+
 role Zstd::Buffer {
     method recommended-size(--> size_t) { ... }
 
     multi method new(Int $bufsize = self.recommended-size) {
         #self.new(nativecast(Pointer[uint8], CArray[uint8].allocate($bufsize)));
-        self.new(CArray[uint8].allocate($bufsize + 1));
+        #self.new(CArray[uint8].allocate($bufsize + 128));
+        self.new(malloc($bufsize + 1), $bufsize + 1);
     }
-    multi method new(CArray[uint8] $buffer) {
+    multi method new(CArray[uint8] $buffer, $size = $buffer.elems - 1) {
         my $result = self.bless(
-            size => $buffer.elems - 1,
+            size => $size,
             pos => 0);
         use nqp;
         nqp::bindattr(nqp::decont($result), self, '$!buffer', $buffer);
@@ -40,6 +44,9 @@ class Zstd::InBuffer does Zstd::Buffer is repr<CStruct> is rw is export {
     sub ZSTD_CStreamInSize returns size_t is native('zstd') { }
 
     method recommended-size(--> size_t) { ZSTD_CStreamInSize }
+    submethod DESTROY {
+        free($!buffer);
+    }
 }
 
 class Zstd::OutBuffer does Zstd::Buffer is repr<CStruct> is rw is export {
@@ -52,6 +59,10 @@ class Zstd::OutBuffer does Zstd::Buffer is repr<CStruct> is rw is export {
     sub ZSTD_CStreamOutSize returns size_t is native('zstd') { }
 
     method recommended-size(--> size_t) { ZSTD_CStreamOutSize }
+
+    submethod DESTROY {
+        free($!buffer);
+    }
 }
 
 class Zstd::CStream is repr<CPointer> is export {
@@ -116,10 +127,10 @@ class Zstd::Compressor {
 
     has buf8 $!compressorOutput;
 
-    method BUILD {
+    submethod BUILD(Zstd::InBuffer:D :$input-buffer = Zstd::InBuffer.new, Zstd::OutBuffer:D :$output-buffer = Zstd::OutBuffer.new) {
         $!cstream = Zstd::CStream.new;
-        $!feedBuf = Zstd::InBuffer.new;
-        $!resBuf  = Zstd::OutBuffer.new;
+        $!feedBuf = $input-buffer;
+        $!resBuf  = $output-buffer;
 
         $!feedBufSize = $!feedBuf.size;
         $!resBufSize = $!resBuf.size;
@@ -175,7 +186,7 @@ class Zstd::Compressor {
             $!feedBuf.size = $targetElems;
             $!feedBuf.pos = 0;
 
-            note "feed input of cstream: ", $!cstream.feed-input($!feedBuf, $!resBuf);
+            $!cstream.feed-input($!feedBuf, $!resBuf);
 
             if $!feedBuf.pos == $!feedBuf.size {
                 $!feedBuf.pos = 0;
@@ -228,10 +239,10 @@ class Zstd::Decompressor {
 
     has int64 $!status;
 
-    method BUILD {
+    submethod BUILD(Zstd::InBuffer:D :$input-buffer = Zstd::InBuffer.new, Zstd::OutBuffer:D :$output-buffer = Zstd::OutBuffer.new) {
         $!dstream = Zstd::DStream.new;
-        $!feedBuf = Zstd::InBuffer.new;
-        $!resBuf  = Zstd::OutBuffer.new;
+        $!feedBuf = $input-buffer;
+        $!resBuf  = $output-buffer;
 
         $!feedBufSize = $!feedBuf.size;
         $!resBufSize = $!resBuf.size;
@@ -255,12 +266,13 @@ class Zstd::Decompressor {
                }
             }
 
-            my int $targetPos = 0;
+            my int $targetPos = -1;
             my int $targetElems = $input.elems;
 
             my CArray[uint8] $target := $!feedBuf.buffer;
 
-            $target.ASSIGN-POS($targetPos - 1, $chunk.AT-POS($targetPos - 1)) while ++$targetPos <= $targetElems;
+            use nqp;
+            nqp::bindpos_i(nqp::decont($target), $targetPos, nqp::atpos_i(nqp::decont($chunk), $targetPos)) while ++$targetPos < $targetElems;
 
             $!feedBuf.size = $targetElems;
             $!feedBuf.pos = 0;
@@ -311,8 +323,12 @@ class Zstd::Decompressor {
     }
 
     method !transport-output {
+        use nqp;
         if $!resBuf.pos > 0 {
-            $!decompressorOutput.append($!resBuf.buffer[0..^($!resBuf.pos)].Array);
+            my int $resbufpos = -1;
+            my int $targetpos = $!resBuf.pos - 1;
+            my $buf := nqp::decont($!resBuf.buffer);
+            nqp::push_i(nqp::decont($!decompressorOutput), nqp::atpos_i($buf, $resbufpos)) while $resbufpos++ < $targetpos;
             $!resBuf.pos = 0;
             $!resBuf.size = $!resBufSize;
 
