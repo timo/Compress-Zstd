@@ -1,26 +1,26 @@
 {
-  "auth" : "cpan:TIMOTIMO",
-  "authors" : [
+  "name": "Compress::Zstd",
+  "description": "Native binding to Facebook's Zstd compression library",
+  "version": "0.0.1",
+  "perl": "6.c",
+  "authors": [
     "Timo Paulssen"
   ],
-  "build-depends" : [ ],
-  "depends" : [ ],
-  "description" : "Native binding to Facebook's Zstd compression library",
-  "license" : "Artistic-2.0",
-  "name" : "Compress::Zstd",
-  "perl" : "6.c",
-  "provides" : {
-    "Compress::Zstd" : "lib/Compress/Zstd.pm6"
+  "auth": "cpan:TIMOTIMO",
+  "depends": [],
+  "build-depends": [],
+  "test-depends": [],
+  "provides": {
+    "Compress::Zstd": "lib/Compress/Zstd.pm6"
   },
-  "resources" : [ ],
-  "source-url" : "https://github.com/timo/Compress-Zstd.git",
-  "tags" : [
+  "resources": [],
+  "license": "Artistic-2.0",
+  "tags": [
     "Compression",
     "Decompress",
     "Compress",
     "ZSTD",
     "Native"
   ],
-  "test-depends" : [ ],
-  "version" : "0.0.1"
+  "source-url": "https://github.com/timo/Compress-Zstd.git"
 }
