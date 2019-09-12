@@ -1,5 +1,5 @@
 use v6.c;
-unit module Compress::Zstd:ver<0.0.2>:auth<cpan:TIMOTIMO>;
+unit module Compress::Zstd:ver<0.0.3>:auth<cpan:TIMOTIMO>;
 
 use NativeCall;
 

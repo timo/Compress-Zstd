@@ -1,6 +1,8 @@
 Revision history for Compress-Zstd
 
 {{$NEXT}}
+
+0.0.3  2019-09-12T20:04:51+02:00
     - More tests
     - Random fixes
     - Make decompress a whole lot faster
