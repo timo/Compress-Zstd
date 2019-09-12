@@ -285,7 +285,12 @@ class Zstd::Decompressor {
             }
             else {
                 if $!status == 0 {
-                    $!leftOvers.append($!feedBuf.buffer[$!feedBuf.pos ..^ $input.elems].Array);
+                    #$!leftOvers.append($!feedBuf.buffer[$!feedBuf.pos ..^ $input.elems].Array);
+                    use nqp;
+                    my int $pos = $!feedBuf.pos - 1;
+                    my int $endPos = $input.elems - 1;
+                    my $inBuf := $!feedBuf.buffer;
+                    nqp::push_i(nqp::decont($!leftOvers), nqp::atpos_i($inBuf, $pos)) while $pos++ < $endPos;
                 }
                 else {
                     my $feedbuf-moved = 0;
