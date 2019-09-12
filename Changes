@@ -1,6 +1,8 @@
 Revision history for Compress-Zstd
 
 {{$NEXT}}
+    - More tests
+    - Random fixes
 
 0.0.1  2019-07-04T22:20:07+02:00
     - Initial version
