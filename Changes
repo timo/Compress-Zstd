@@ -3,6 +3,8 @@ Revision history for Compress-Zstd
 {{$NEXT}}
     - More tests
     - Random fixes
+    - Make decompress a whole lot faster
+    - passing a small input buffer now recommends reading less in first call
 
 0.0.1  2019-07-04T22:20:07+02:00
     - Initial version
