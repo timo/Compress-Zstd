@@ -250,7 +250,7 @@ class Zstd::Decompressor {
         $!decompressorOutput .= new;
         $!leftOvers .= new;
 
-        $!status = Zstd::InBuffer.recommended-size;
+        $!status = Zstd::InBuffer.recommended-size min $!feedBufSize;
     }
 
     sub memmove(CArray $target, Pointer $source, int32 $count) is native(Str) {*}
