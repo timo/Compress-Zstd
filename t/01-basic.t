@@ -41,7 +41,7 @@ ok $decResBuf.pos != 0, "result buffer's position has moved: $decResBuf.pos() $d
 diag "original string (first 100 chars)";
 diag Buf.new($feedBuf.buffer[^$feedBuf.size]).decode("utf8").substr(0, 100);
 diag "decompressed string (first 100 chars)";
-diag Buf.new($decResBuf.buffer[^$decResBuf.size]).decode("utf8").substr(0, 100);
+diag Buf.new($decResBuf.buffer[^$decResBuf.size]).decode("utf8-c8").substr(0, 100);
 
 diag "output from finish-stream: " ~ $compressor.end-stream($resBuf);
 
